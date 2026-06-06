@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>美团AI挑战赛 · 赛道6 技术方案</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@300;400;600;900&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface-2: #1a1a26;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --text-muted: #7a7a90;
+    --accent: #00e676;
+    --accent-2: #00b0ff;
+    --accent-3: #ff6d00;
+    --accent-4: #e040fb;
+    --glow: rgba(0, 230, 118, 0.15);
+    --glow-2: rgba(0, 176, 255, 0.12);
+    --radius: 16px;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Noto Sans SC', sans-serif;
+    --display: 'Space Grotesk', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── Grain overlay ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── Ambient blobs ── */
+  .ambient {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .ambient-1 { width: 600px; height: 600px; background: rgba(0, 230, 118, 0.06); top: -200px; left: -100px; }
+  .ambient-2 { width: 500px; height: 500px; background: rgba(0, 176, 255, 0.05); bottom: 10%; right: -150px; }
+  .ambient-3 { width: 400px; height: 400px; background: rgba(224, 64, 251, 0.04); top: 50%; left: 30%; }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 0;
+    position: relative;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 16px 6px 10px;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    margin-bottom: 32px;
+    width: fit-content;
+    animation: fadeUp 0.8s ease both;
+  }
+  .hero-badge .dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s ease infinite;
+  }
+
+  .hero-title {
+    font-family: var(--display);
+    font-size: clamp(48px, 7vw, 88px);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.8s ease 0.1s both;
+  }
+  .hero-title .highlight {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 20px;
+    color: var(--text-muted);
+    max-width: 640px;
+    line-height: 1.8;
+    animation: fadeUp 0.8s ease 0.2s both;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 40px;
+    margin-top: 48px;
+    animation: fadeUp 0.8s ease 0.3s both;
+  }
+  .hero-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .hero-meta-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .hero-meta-value {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  /* ── Scroll indicator ── */
+  .scroll-hint {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    animation: fadeUp 0.8s ease 0.5s both;
+  }
+  .scroll-hint .arrow {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--text-muted), transparent);
+    animation: scrollPulse 2s ease infinite;
+  }
+
+  /* ── Sections ── */
+  section {
+    padding: 100px 0;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-label::before {
+    content: '';
+    width: 24px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .section-title {
+    font-family: var(--display);
+    font-size: clamp(32px, 4vw, 48px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    margin-bottom: 20px;
+    line-height: 1.2;
+  }
+
+  .section-desc {
+    font-size: 17px;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin-bottom: 48px;
+  }
+
+  /* ── Cards ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    padding: 1px;
+    background: linear-gradient(135deg, transparent, transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    transition: background 0.3s ease;
+  }
+  .card:hover {
+    border-color: transparent;
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  }
+  .card:hover::before {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  }
+
+  .card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  .card-icon.green { background: rgba(0, 230, 118, 0.1); color: var(--accent); }
+  .card-icon.blue { background: rgba(0, 176, 255, 0.1); color: var(--accent-2); }
+  .card-icon.orange { background: rgba(255, 109, 0, 0.1); color: var(--accent-3); }
+  .card-icon.purple { background: rgba(224, 64, 251, 0.1); color: var(--accent-4); }
+
+  .card-title {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+
+  .card-text {
+    font-size: 15px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  /* ── Flow diagram ── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+  .flow::before {
+    content: '';
+    position: absolute;
+    left: 24px;
+    top: 48px;
+    bottom: 48px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent-2), var(--accent-4));
+    opacity: 0.3;
+  }
+
+  .flow-step {
+    display: flex;
+    gap: 24px;
+    padding: 20px 0;
+    position: relative;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all 0.6s ease;
+  }
+  .flow-step.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .flow-dot {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    z-index: 1;
+  }
+
+  .flow-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    flex: 1;
+  }
+
+  .flow-title {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .flow-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(0, 230, 118, 0.1);
+    color: var(--accent);
+  }
+
+  .flow-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  /* ── Architecture diagram ── */
+  .arch-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .arch-diagram::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(0, 230, 118, 0.05), transparent);
+    pointer-events: none;
+  }
+
+  .arch-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .arch-box {
+    padding: 14px 24px;
+    border-radius: 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    min-width: 140px;
+    transition: all 0.3s ease;
+    cursor: default;
+  }
+  .arch-box:hover { transform: scale(1.05); }
+
+  .arch-box.input {
+    background: rgba(0, 230, 118, 0.1);
+    border: 1px solid rgba(0, 230, 118, 0.3);
+    color: var(--accent);
+  }
+  .arch-box.llm {
+    background: rgba(0, 176, 255, 0.1);
+    border: 1px solid rgba(0, 176, 255, 0.3);
+    color: var(--accent-2);
+  }
+  .arch-box.tool {
+    background: rgba(255, 109, 0, 0.1);
+    border: 1px solid rgba(255, 109, 0, 0.3);
+    color: var(--accent-3);
+  }
+  .arch-box.output {
+    background: rgba(224, 64, 251, 0.1);
+    border: 1px solid rgba(224, 64, 251, 0.3);
+    color: var(--accent-4);
+  }
+
+  .arch-arrow {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 20px;
+    margin: 8px 0;
+    opacity: 0.5;
+  }
+
+  .arch-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* ── Tech table ── */
+  .tech-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+  .tech-table th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tech-table td {
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(42, 42, 58, 0.5);
+    vertical-align: top;
+  }
+  .tech-table tr:hover td {
+    background: rgba(0, 230, 118, 0.02);
+  }
+  .tech-table .layer {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .tech-table .choice {
+    font-family: var(--display);
+    font-weight: 600;
+  }
+  .tech-table .reason {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* ── Score bars ── */
+  .score-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .score-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .score-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .score-name {
+    font-size: 15px;
+    font-weight: 400;
+  }
+  .score-weight {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+  }
+  .score-bar {
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .score-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    width: 0;
+    transition: width 1.5s ease;
+  }
+
+  /* ── Tools grid ── */
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+  }
+  .tool-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    transition: all 0.3s ease;
+  }
+  .tool-item:hover {
+    border-color: var(--accent-3);
+    background: rgba(255, 109, 0, 0.03);
+  }
+  .tool-name {
+    color: var(--accent-3);
+    font-weight: 600;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+  .tool-params {
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  /* ── Quote block ── */
+  .quote-block {
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 28px 32px;
+    margin: 40px 0;
+    font-size: 18px;
+    font-style: italic;
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+
+  /* ── Timeline demo ── */
+  .demo-timeline {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    font-family: var(--mono);
+    font-size: 13px;
+    overflow-x: auto;
+  }
+  .demo-line {
+    display: flex;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(42, 42, 58, 0.3);
+    align-items: baseline;
+  }
+  .demo-line:last-child { border-bottom: none; }
+  .demo-time {
+    color: var(--accent);
+    min-width: 60px;
+    font-weight: 600;
+  }
+  .demo-action {
+    color: var(--text);
+    flex: 1;
+  }
+  .demo-status {
+    color: var(--accent-2);
+    font-size: 12px;
+    padding: 2px 8px;
+    background: rgba(0, 176, 255, 0.08);
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  /* ── Footer ── */
+  footer {
+    padding: 60px 0;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  footer .footer-brand {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(1); }
+    50% { opacity: 0.8; transform: scaleY(1.2); }
+  }
+
+  .fade-in {
+    opacity: 0;
+    transform: translateY(32px);
+    transition: all 0.8s ease;
+  }
+  .fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .container { padding: 0 20px; }
+    .hero { padding: 60px 0; min-height: auto; }
+    .hero-meta { flex-direction: column; gap: 20px; }
+    .arch-diagram { padding: 24px; }
+    .flow::before { left: 20px; }
+    .flow-dot { width: 40px; height: 40px; min-width: 40px; font-size: 12px; }
+    section { padding: 60px 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient ambient-1"></div>
+<div class="ambient ambient-2"></div>
+<div class="ambient ambient-3"></div>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<header class="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      美团AI挑战赛 · 2026
+    </div>
+    <h1 class="hero-title">
+      赛道6<br><span class="highlight">短时活动规划Agent</span>
+    </h1>
+    <p class="hero-sub">
+      从一句话意图到可执行方案，构建本地场景下「帮你把事做完」的智能规划系统。<br>
+      输入自然语言，输出时间线、POI串联、一键下单。
+    </p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">难度</span>
+        <span class="hero-meta-value">★★☆☆☆</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">技术栈</span>
+        <span class="hero-meta-value">LLM + Tool Use</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">核心能力</span>
+        <span class="hero-meta-value">规划 · 执行 · 交互</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">交付物</span>
+        <span class="hero-meta-value">Demo + 设计文档</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>SCROLL</span>
+    <div class="arrow"></div>
+  </div>
+</header>
+
+<!-- ═══════════════ WHY THIS TRACK ═══════════════ -->
+<section>
+  <div class="container fade-in">
+    <div class="section-label">选题理由</div>
+    <h2 class="section-title">为什么选赛道6</h2>
+    <p class="section-desc">在六道赛题中，赛道6是技术门槛最低、演示效果最好、业务贴合度最高的选择。</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon green">⚡</div>
+        <h3 class="card-title">技术栈干净</h3>
+        <p class="card-text">核心是 LLM + Tool Use，不需要图像生成、运筹优化或复杂评估体系。一套 ReAct 循环撑起整个系统。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon blue">🎯</div>
+        <h3 class="card-title">Demo 效果炸裂</h3>
+        <p class="card-text">输入一句话 → 生成完整方案 → 一键下单。叙事线清晰，评委30秒内看懂价值，不需要技术背景也能理解。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon orange">🏢</div>
+        <h3 class="card-title">业务贴合度高</h3>
+        <p class="card-text">直接对应美团「帮你把事做完」的产品理念。串联吃喝玩乐全场景，是美团核心业务的自然延伸。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">📊</div>
+        <h3 class="card-title">数据门槛最低</h3>
+        <p class="card-text">不依赖官方脱敏数据，POI、餐厅、票务全部 Mock 即可。评审重点在系统设计能力，不在数据质量。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ ARCHITECTURE ═══════════════ -->
+<section>
+  <div class="container fade-in">
+    <div class="section-label">系统架构</div>
+    <h2 class="section-title">一句话 → 完整方案</h2>
+    <p class="section-desc">用户输入自然语言，经过意图解析、多轮工具调用、方案编排，最终输出可执行的时间线。</p>
+
+    <div class="arch-diagram">
+      <div class="arch-label">输入层</div>
+      <div class="arch-row">
+        <div class="arch-box input">"下午带老婆孩子出去玩"</div>
+      </div>
+
+      <div class="arch-arrow">▼</div>
+      <div class="arch-label">意图解析</div>
+      <div class="arch-row">
+        <div class="arch-box llm">Intent Parser (LLM)</div>
+      </div>
+      <div class="arch-row" style="gap: 8px; margin-top: 8px;">
+        <div class="arch-box llm" style="font-size: 11px; padding: 8px 14px;">场景: 家庭</div>
+        <div class="arch-box llm" style="font-size: 11px; padding: 8px 14px;">人数: 3人</div>
+        <div class="arch-box llm" style="font-size: 11px; padding: 8px 14px;">时长: 4-6h</div>
+        <div class="arch-box llm" style="font-size: 11px; padding: 8px 14px;">约束: 减肥饮食</div>
+      </div>
+
+      <div class="arch-arrow">▼</div>
+      <div class="arch-label">规划引擎 · ReAct 循环</div>
+      <div class="arch-row">
+        <div class="arch-box tool">search_poi()</div>
+        <div class="arch-box tool">search_restaurant()</div>
+        <div class="arch-box tool">check_waitlist()</div>
+      </div>
+      <div class="arch-row">
+        <div class="arch-box tool">buy_ticket()</div>
+        <div class="arch-box tool">reserve_table()</div>
+        <div class="arch-box tool">order_delivery()</div>
+        <div class="arch-box tool">search_coupon()</div>
+      </div>
+
+      <div class="arch-arrow">▼</div>
+      <div class="arch-label">输出层</div>
+      <div class="arch-row">
+        <div class="arch-box output">时间线方案 + 订单状态</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ CORE FLOW ═══════════════ -->
+<section>
+  <div class="container fade-in">
+    <div class="section-label">核心流程</div>
+    <h2 class="section-title">从意图到执行的五个阶段</h2>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-dot">01</div>
+        <div class="flow-content">
+          <div class="flow-title">
+            意图解析
+            <span class="flow-tag">LLM</span>
+          </div>
+          <div class="flow-desc">
+            从自然语言中提取结构化约束：场景（家庭/朋友）、人数、时长、距离限制、饮食偏好、特殊需求（带娃/减肥/预算）。
+            输出标准化的 Intent JSON。
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-dot">02</div>
+        <div class="flow-content">
+          <div class="flow-title">
+            信息收集
+            <span class="flow-tag">Tool Calls</span>
+          </div>
+          <div class="flow-desc">
+            LLM 作为大脑，按需调用 Tool 收集信息：搜索周边 POI、查找匹配餐厅、查询实时排队情况、检查活动日历。
+            采用 ReAct 模式——思考→行动→观察，循环直到信息充分。
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-dot">03</div>
+        <div class="flow-content">
+          <div class="flow-title">
+            方案编排
+            <span class="flow-tag">LLM</span>
+          </div>
+          <div class="flow-desc">
+            将收集到的 POI、餐厅、活动按时间线串联。考虑地理位置就近原则、人群体力（5岁孩子）、用餐时间窗口、
+            排队等待时间等约束，生成最优时间线。
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-dot">04</div>
+        <div class="flow-content">
+          <div class="flow-title">
+            用户确认
+            <span class="flow-tag">交互</span>
+          </div>
+          <div class="flow-desc">
+            输出人可读的方案摘要，支持用户提出修改意见："换一家餐厅"、"加一个咖啡馆"、"孩子4点要午睡"。
+            多轮对话迭代直到用户满意。
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-dot">05</div>
+        <div class="flow-content">
+          <div class="flow-title">
+            一键执行
+            <span class="flow-tag">Tool Calls</span>
+          </div>
+          <div class="flow-desc">
+            用户确认后，批量调用执行类 Tool：购买门票、餐厅排号/预订、下单配送（蛋糕/鲜花）。
+            返回所有订单状态，生成最终可执行方案。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ TOOLS ═══════════════ -->
+<section>
+  <div class="container fade-in">
+    <div class="section-label">工具设计</div>
+    <h2 class="section-title">9 个核心 Tool</h2>
+    <p class="section-desc">分为查询类和执行类，覆盖 POI、餐厅、票务、配送四大场景。</p>
+
+    <div class="tools-grid">
+      <div class="tool-item">
+        <div class="tool-name">search_poi()</div>
+        <div class="tool-params">category, location, distance_limit → POI列表</div>
+      </div>
+      <div class="tool-item">
+        <div class="tool-name">get_poi_detail()</div>
+        <div class="tool-params">poi_id → 评分、营业时间、适合人群</div>
+      </div>
+      <div class="tool-item">
+        <div class="tool-name">search_restaurant()</div>
+        <div class="tool-params">tags, location, party_size → 餐厅列表</div>
+      </div>
+      <div class="tool-item">
+        <div class="tool-name">check_waitlist()</div>
+        <div class="tool-params">restaurant_id → 当前排队人数、预计等待</div>
+      </div>
+      <div class="tool-item">
+        <div class="tool-name">reserve_table()</div>
+        <div class="tool-params">restaurant_id, time, party_size → 预订结果</div>
+      </div>
+      <div class="tool-item">
+        <div class="tool-name">buy_ticket()</div>
+        <div class="tool-params">venue_id, quantity → 订单号、二维码</div>
+      </div>
+      <div class="tool-item">
+        <div class="tool-name">check_event()</div>
+        <div class="tool-params">location, date → 活动列表（展览/市集/演出）</div>
+      </div>
+      <div class="tool-item">
+        <div class="tool-name">order_delivery()</div>
+        <div class="tool-params">item, address, time → 配送单号、预计送达</div>
+      </div>
+      <div class="tool-item">
+        <div class="tool-name">search_coupon()</div>
+        <div class="tool-params">scope_type, scope_id → 团购/满减/折扣券列表</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ DEMO ═══════════════ -->
+<section>
+  <div class="container fade-in">
+    <div class="section-label">效果预览</div>
+    <h2 class="section-title">方案输出示例</h2>
+    <p class="section-desc">输入"下午带老婆孩子出去玩"后，系统生成的可执行时间线：</p>
+
+    <div class="demo-timeline">
+      <div class="demo-line">
+        <span class="demo-time">14:00</span>
+        <span class="demo-action">自驾出发 → 欢乐岛儿童乐园（3.2km）</span>
+        <span class="demo-status">导航已开启</span>
+      </div>
+      <div class="demo-line">
+        <span class="demo-time">14:30</span>
+        <span class="demo-action">欢乐岛儿童乐园 · 亲子套票×2</span>
+        <span class="demo-status">✓ 门票已购 #T20260517001</span>
+      </div>
+      <div class="demo-line">
+        <span class="demo-time">16:30</span>
+        <span class="demo-action">前往绿叶轻食餐厅（1.1km）· 低卡健康餐</span>
+        <span class="demo-status">已排号 A23 · 约等15min</span>
+      </div>
+      <div class="demo-line">
+        <span class="demo-time">17:00</span>
+        <span class="demo-action">晚餐 · 绿叶轻食（适配减肥饮食需求）</span>
+        <span class="demo-status">✓ 餐厅已预订 3人</span>
+      </div>
+      <div class="demo-line">
+        <span class="demo-time">17:30</span>
+        <span class="demo-action">低糖蓝莓蛋糕 配送至餐厅</span>
+        <span class="demo-status">✓ 已下单 #D20260517008</span>
+      </div>
+      <div class="demo-line">
+        <span class="demo-time">18:30</span>
+        <span class="demo-action">翠湖公园散步消食（步行5分钟）</span>
+        <span class="demo-status">免费 · 24h开放</span>
+      </div>
+      <div class="demo-line">
+        <span class="demo-time">19:30</span>
+        <span class="demo-action">返程</span>
+        <span class="demo-status">预计15min到家</span>
+      </div>
+    </div>
+
+    <div class="quote-block">
+      "帮你把事做完"——不是搜索推荐，而是一句话触发、方案自动生成、关键动作自动执行的完整闭环。
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ TECH STACK ═══════════════ -->
+<section>
+  <div class="container fade-in">
+    <div class="section-label">技术选型</div>
+    <h2 class="section-title">轻量、可控、好演示</h2>
+
+    <table class="tech-table">
+      <thead>
+        <tr>
+          <th>层</th>
+          <th>选型</th>
+          <th>理由</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="layer">LLM</td>
+          <td class="choice">Claude API / GPT-4o</td>
+          <td class="reason">原生 Tool Use 能力成熟，ReAct 循环稳定</td>
+        </tr>
+        <tr>
+          <td class="layer">Agent 框架</td>
+          <td class="choice">LangGraph / 原生 SDK</td>
+          <td class="reason">可控的循环调度，支持多轮 Tool 调用</td>
+        </tr>
+        <tr>
+          <td class="layer">前端 Demo</td>
+          <td class="choice">Streamlit / CLI</td>
+          <td class="reason">快速出效果，半小时搭完可交互界面</td>
+        </tr>
+        <tr>
+          <td class="layer">Mock 数据</td>
+          <td class="choice">JSON + 内存字典</td>
+          <td class="reason">简单可控，数据结构贴近真实 API</td>
+        </tr>
+        <tr>
+          <td class="layer">部署</td>
+          <td class="choice">本地运行 / Streamlit Cloud</td>
+          <td class="reason">评委可直接访问，零运维成本</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════ SCORING ═══════════════ -->
+<section>
+  <div class="container fade-in">
+    <div class="section-label">评审维度</div>
+    <h2 class="section-title">得分策略</h2>
+    <p class="section-desc">预测评审重点，针对性发力。</p>
+
+    <div class="card-grid" style="grid-template-columns: 1fr 1fr;">
+      <div class="card">
+        <h3 class="card-title">权重分布预估</h3>
+        <div class="score-list" style="margin-top: 20px;">
+          <div class="score-item">
+            <div class="score-header">
+              <span class="score-name">方案合理性</span>
+              <span class="score-weight">HIGH</span>
+            </div>
+            <div class="score-bar"><div class="score-fill" data-width="90%"></div></div>
+          </div>
+          <div class="score-item">
+            <div class="score-header">
+              <span class="score-name">Tool 设计完整度</span>
+              <span class="score-weight">HIGH</span>
+            </div>
+            <div class="score-bar"><div class="score-fill" data-width="85%"></div></div>
+          </div>
+          <div class="score-item">
+            <div class="score-header">
+              <span class="score-name">执行能力</span>
+              <span class="score-weight">MID</span>
+            </div>
+            <div class="score-bar"><div class="score-fill" data-width="70%"></div></div>
+          </div>
+          <div class="score-item">
+            <div class="score-header">
+              <span class="score-name">交互体验</span>
+              <span class="score-weight">MID</span>
+            </div>
+            <div class="score-bar"><div class="score-fill" data-width="60%"></div></div>
+          </div>
+          <div class="score-item">
+            <div class="score-header">
+              <span class="score-name">创新加分</span>
+              <span class="score-weight">LOW</span>
+            </div>
+            <div class="score-bar"><div class="score-fill" data-width="40%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">发力重点</h3>
+        <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 16px;">
+          <div>
+            <div style="color: var(--accent); font-family: var(--mono); font-size: 12px; margin-bottom: 4px;">P0 · 必须做好</div>
+            <div style="font-size: 14px; color: var(--text-muted);">时间线逻辑自洽、考虑人群特征（带娃/减肥）、Tool 返回值合理</div>
+          </div>
+          <div>
+            <div style="color: var(--accent-2); font-family: var(--mono); font-size: 12px; margin-bottom: 4px;">P1 · 锦上添花</div>
+            <div style="font-size: 14px; color: var(--text-muted);">多轮对话修改方案、异常处理（餐厅满座自动换推荐）、方案对比</div>
+          </div>
+          <div>
+            <div style="color: var(--accent-4); font-family: var(--mono); font-size: 12px; margin-bottom: 4px;">P2 · 创新加分</div>
+            <div style="font-size: 14px; color: var(--text-muted);">用户偏好记忆、多方案并行生成、成本优化建议</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ MINIMUM VIABLE DEMO ═══════════════ -->
+<section>
+  <div class="container fade-in">
+    <div class="section-label">最小可行方案</div>
+    <h2 class="section-title">先跑通这条线</h2>
+
+    <div class="card" style="background: linear-gradient(135deg, var(--surface), var(--surface-2)); border-color: var(--accent); border-width: 1px;">
+      <div style="font-family: var(--mono); font-size: 14px; line-height: 2; color: var(--text-muted);">
+        <span style="color: var(--text-muted);"># 最小 Demo 路径</span><br>
+        <span style="color: var(--accent);">输入</span> → LLM 解析意图<br>
+        → 调 <span style="color: var(--accent-3);">3 个 Tool</span>（搜 POI + 搜餐厅 + 查排队）<br>
+        → LLM 生成方案<br>
+        → 用户确认<br>
+        → 调 <span style="color: var(--accent-3);">2 个 Tool</span>（订票 + 排号）<br>
+        → <span style="color: var(--accent-4);">输出结果</span>
+      </div>
+      <div style="margin-top: 20px; font-family: var(--mono); font-size: 13px; color: var(--text-muted);">
+        5 个 Tool · 1 个 LLM 循环 · 1 个 CLI 交互 = <span style="color: var(--accent); font-weight: 600;">完整 Demo</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer>
+  <div class="container">
+    <div class="footer-brand">Meituan AI Challenge 2026</div>
+    <div>赛道6 · 短时活动规划Agent · 技术方案</div>
+  </div>
+</footer>
+
+<script>
+  // ── Intersection Observer for fade-in ──
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+
+  document.querySelectorAll('.fade-in, .flow-step').forEach(el => observer.observe(el));
+
+  // ── Score bar animation ──
+  const scoreObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.querySelectorAll('.score-fill').forEach(fill => {
+          fill.style.width = fill.dataset.width;
+        });
+      }
+    });
+  }, { threshold: 0.3 });
+
+  document.querySelectorAll('.score-list').forEach(el => scoreObserver.observe(el));
+</script>
+
+</body>
+</html>
